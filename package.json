@@ -1,0 +1,49 @@
+{
+  "name": "deepseek-plugin-deepseek-balance-indicator",
+  "version": "1.0.0",
+  "private": false,
+  "type": "module",
+  "description": "Shows your remaining DeepSeek platform balance in the DeepSeek Harness composer status row.",
+  "license": "MIT",
+  "keywords": [
+    "dsh-plugin",
+    "deepseek-harness",
+    "deepseek",
+    "balance",
+    "usage"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jeremytenjo/deepseek-plugin-deepseek-balance-indicator.git"
+  },
+  "homepage": "https://github.com/jeremytenjo/deepseek-plugin-deepseek-balance-indicator#readme",
+  "bugs": {
+    "url": "https://github.com/jeremytenjo/deepseek-plugin-deepseek-balance-indicator/issues"
+  },
+  "exports": {
+    ".": "./index.js",
+    "./client": "./client.js",
+    "./locale/*.json": "./locale/*.json",
+    "./icon": "./icon.svg"
+  },
+  "files": [
+    "index.js",
+    "client.js",
+    "cordis.patch.yml",
+    "locale/*.json",
+    "icon.svg"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "immediately": true,
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-conversation",
+        "@deepseek-ai/dsh-client-locale"
+      ]
+    }
+  }
+}

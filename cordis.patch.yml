@@ -1,0 +1,3 @@
+- insert:
+    - id: deepseek-balance-indicator
+      name: 'deepseek-plugin-deepseek-balance-indicator'
