@@ -43,7 +43,12 @@ export function apply(ctx) {
           return value;
         }
         const detail = await ctx.deepseekAccount.getBalance(client);
-        if (!detail || detail.status !== 'ready') {
+        if (detail === null) {
+          const value = { status: 'signed-out', links };
+          cache = { at: Date.now(), value };
+          return value;
+        }
+        if (detail.status !== 'ready') {
           // A failed query is not cached so the next poll or click can recover.
           return { status: 'failed', links };
         }
@@ -52,6 +57,7 @@ export function apply(ctx) {
           wallets: normalizeWallets(detail.value),
           bonusWallets: normalizeWallets(detail.bonusWallets),
           links,
+          fetchedAt: Date.now(),
         };
         cache = { at: Date.now(), value };
         return value;
@@ -93,7 +99,7 @@ async function handleRequest(ctx, req, res, readBalance, version) {
       wallets: balance.wallets ?? [],
       bonusWallets: balance.bonusWallets ?? [],
       links: balance.links,
-      fetchedAt: balance.status === 'ready' ? Date.now() : null,
+      fetchedAt: balance.status === 'ready' ? balance.fetchedAt : null,
     });
   } catch (error) {
     if (res.writableEnded) return;
