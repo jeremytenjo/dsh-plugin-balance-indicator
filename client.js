@@ -7,7 +7,7 @@
  */
 
 window.__ModuleLoader__.load({
-  id: 'deepseek-plugin-deepseek-balance-indicator',
+  id: 'dsh-plugin-balance-indicator',
   factory(require) {
     const React = require('react');
     const h = React.createElement;

@@ -1,5 +1,5 @@
 {
-  "name": "deepseek-plugin-deepseek-balance-indicator",
+  "name": "dsh-plugin-balance-indicator",
   "version": "1.0.0",
   "private": false,
   "type": "module",
@@ -14,11 +14,11 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/jeremytenjo/deepseek-plugin-deepseek-balance-indicator.git"
+    "url": "git+https://github.com/jeremytenjo/dsh-plugin-balance-indicator.git"
   },
-  "homepage": "https://github.com/jeremytenjo/deepseek-plugin-deepseek-balance-indicator#readme",
+  "homepage": "https://github.com/jeremytenjo/dsh-plugin-balance-indicator#readme",
   "bugs": {
-    "url": "https://github.com/jeremytenjo/deepseek-plugin-deepseek-balance-indicator/issues"
+    "url": "https://github.com/jeremytenjo/dsh-plugin-balance-indicator/issues"
   },
   "exports": {
     ".": "./index.js",

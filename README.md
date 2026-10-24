@@ -23,8 +23,8 @@ The pill reads `¥12.34` / `$12.34` from your signed-in DeepSeek account, refres
 ## Install
 
 ```bash
-git clone https://github.com/jeremytenjo/deepseek-plugin-deepseek-balance-indicator.git
-dsh plugin --profile desktop add ./deepseek-plugin-deepseek-balance-indicator
+git clone https://github.com/jeremytenjo/dsh-plugin-balance-indicator.git
+dsh plugin --profile desktop add ./dsh-plugin-balance-indicator
 ```
 
 Restart the Host or reload the page, then start or open a session. The pill appears in the status row above the composer. Replace `desktop` with the profile name shown by `dsh --profile <name> --dump-config`.
