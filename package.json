@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": false,
   "type": "module",
-  "description": "Shows your remaining DeepSeek platform balance in the DeepSeek Harness composer status row.",
+  "description": "Shows your remaining DeepSeek platform balance in the DeepSeek Harness sidebar footer.",
   "license": "MIT",
   "keywords": [
     "dsh-plugin",
@@ -41,9 +41,16 @@
       "platform": "web",
       "immediately": true,
       "inject": [
-        "@deepseek-ai/dsh-client-ui-conversation",
+        "@deepseek-ai/dsh-client-ui-sidebar",
         "@deepseek-ai/dsh-client-locale"
       ]
     }
+  },
+  "devDependencies": {
+    "@tanstack/react-query": "5.104.5",
+    "esbuild": "0.25.10"
+  },
+  "scripts": {
+    "build": "node scripts/build-client.mjs"
   }
 }

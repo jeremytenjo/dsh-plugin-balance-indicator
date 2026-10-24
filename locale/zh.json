@@ -1,6 +1,6 @@
 {
   "meta": {
     "title": "DeepSeek 余额",
-    "description": "在输入框状态栏显示 DeepSeek 平台剩余余额、赠送额度，并提供用量页面入口。"
+    "description": "在左侧边栏底部显示 DeepSeek 平台剩余余额、赠送额度，并提供用量页面入口。"
   }
 }

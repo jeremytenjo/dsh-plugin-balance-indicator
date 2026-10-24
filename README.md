@@ -1,16 +1,16 @@
 # DeepSeek Balance for DeepSeek Harness
 
-Shows how much DeepSeek Platform balance you have left, right beside the session stats in the DeepSeek Harness composer.
+Shows how much DeepSeek Platform balance you have left, in the left sidebar footer just above the account row.
 
-The pill reads `¥12.34` / `$12.34` from your signed-in DeepSeek account, refreshes every 60 seconds and when the window regains focus, and opens [platform.deepseek.com/usage](https://platform.deepseek.com/usage) when clicked. Bonus credit, per-currency breakdown, and the last refresh time appear on hover.
+The badge reads `¥12.34` / `$12.34` from your signed-in DeepSeek account, refreshes every 60 seconds and when the window regains focus, and opens [platform.deepseek.com/usage](https://platform.deepseek.com/usage) when clicked. Bonus credit, per-currency breakdown, and the last refresh time appear on hover.
 
 ## Features
 
-- **Remaining balance at a glance** in the composer dock, next to turns, tokens, cache hit, and context usage.
+- **Remaining balance at a glance** at the bottom of the left sidebar, beside the account and Plugins controls.
 - **Bonus credit separate from paid balance**, listed in the tooltip instead of being silently added.
-- **Live enough**: refreshes on mount, every 60 seconds, and on window focus; the Host coalesces requests with a 20-second cache.
+- **Live enough**: one [TanStack Query](https://tanstack.com/query) cache entry refreshes on mount, every 60 seconds, and when the window regains focus or the network reconnects; the Host coalesces requests with a 20-second cache.
 - **Click through to usage**: opens the Platform usage page from the account's own `usageUrl`.
-- **Honest states**: `Sign in` when no DeepSeek account is connected, `Balance unavailable` when the query fails (click to retry), and no fake zero balance.
+- **Honest states**: `Sign in` when no DeepSeek account is connected, `Unavailable` when the query fails (click to retry), and no fake zero balance.
 - **English and Chinese** UI, following the Harness language setting.
 - **No secrets in the browser**: the route returns wallet amounts and links only.
 
@@ -27,23 +27,23 @@ git clone https://github.com/jeremytenjo/dsh-plugin-balance-indicator.git
 dsh plugin --profile desktop add ./dsh-plugin-balance-indicator
 ```
 
-Restart the Host or reload the page, then start or open a session. The pill appears in the status row above the composer. Replace `desktop` with the profile name shown by `dsh --profile <name> --dump-config`.
+Restart the Host or reload the page, then start or open a session. The badge appears at the bottom of the left sidebar, above the account row. Replace `desktop` with the profile name shown by `dsh --profile <name> --dump-config`.
 
 Manual installation is also possible: add the package directory to the profile's `dependencies` as a `link:`, add it to `dsh.profile.bundles`, and run the profile's package install. Prefer the plugin command; it owns those files.
 
 ## Usage
 
-| State | Pill | Click |
+| State | Footer badge | Click |
 | --- | --- | --- |
 | Signed in, balance loaded | `¥12.34` | Opens the Platform usage page |
 | Balance with bonus credit | `¥12.34` (hover for bonus lines) | Opens the Platform usage page |
 | Not signed in | `Sign in` | — |
-| Query failed | `Balance unavailable` | Retries |
+| Query failed | `Unavailable` | Retries |
 | First load | `Balance…` | — |
 
 Hovering shows every wallet currency, bonus wallets with a positive balance, the last successful refresh time, and the click hint.
 
-The pill uses the same typography, spacing, and theme tokens as the built-in stat pills, so it inherits light and dark themes without configuration.
+The badge uses the sidebar footer's own 42px action row, radius, and theme tokens, so it inherits light and dark themes without configuration. The sidebar footer is a single row shared with the shipped Plugins launcher: the balance takes only its content width and sits first, and it stays hidden while the sidebar is collapsed to the 56px rail (the cached balance reappears immediately on expand).
 
 ## How it works
 
@@ -75,7 +75,17 @@ client.js  ── GET /__dsh/deepseek-balance ──▶  index.js
 
 The route accepts loopback requests only, rejects a foreign `Origin` and cross-site fetches, sends `cache-control: no-store`, and caps the wallet list and string lengths. Account query failures are not cached, so a retry or the next poll recovers; successful reads are cached for 20 seconds to coalesce multiple windows.
 
-`client.js` is the browser half. It registers a lazy factory with the package name, adds a `conversation.composer.dock` entry with order `2` (after the built-in activity and usage pills), and registers its English and Chinese strings through the client locale service. There is no build step and no runtime dependency.
+`client.js` is the browser half. It registers a lazy factory with the package name, adds a `sidebar.footer.action` entry with order `-1` (before the shipped Plugins launcher), and registers its English and Chinese strings through the client locale service. The slot passes the sidebar's `wide` flag: the badge renders only while the sidebar is expanded, because the collapsed 56px rail already holds the Plugins launcher.
+
+The badge's state lives in one TanStack Query entry keyed by language and timezone, with the route response as its data:
+
+- `staleTime: 20s` matches the Host cache, so a focus refetch only asks again once that cache could have moved.
+- `refetchInterval: 60s` polls while the window is visible; `refetchOnWindowFocus` and `refetchOnReconnect` cover the gaps.
+- A click on the failure state calls `refetch()` with the route's `refresh=1` flag; the query's own retry loop is disabled so a failure is reported immediately instead of after backoff.
+- A response whose Host query failed (`status: "failed"`) is cached as data, not as an error, so the failed state appears immediately and the 60-second poll recovers on its own. A network error after a successful load keeps the last known amount visible instead of replacing it.
+- The `QueryClient` is created per enabled plugin instance, provided to the badge's subtree, and cleared in the effect cleanup when the plugin is disabled. The cached entry survives collapsing the sidebar, so expanding again shows the last amount while any stale fetch runs.
+
+`src/client.js` is the editable source. `scripts/build-client.mjs` bundles it with esbuild into `client.js`, keeping React external so the page's shared module table supplies it and TanStack Query bundled in, since the table does not provide it. Do not edit `client.js` directly.
 
 ## Configuration
 
@@ -84,16 +94,20 @@ None. The Platform origin belongs to the Harness account provider; this plugin f
 ## Development
 
 ```bash
+pnpm install
+pnpm run build
 node --check index.js
 node --check client.js
 ```
 
-The package is plain ESM plus a hand-written client bundle, so editing a file and reloading the plugin (Settings → Plugins → disable/enable) or restarting the Host is enough. The locale metadata in `locale/*.json` supplies the Plugin Manager title, description, and icon.
+`pnpm install` brings the build toolchain. esbuild is build-only; TanStack Query is compiled into `client.js` rather than loaded as a separate page module. `pnpm run build` bundles `src/client.js` into the module-loader artifact `client.js`. Editing the Host half or `src/client.js` and reloading the plugin (Settings → Plugins → disable/enable) or restarting the Host is enough after a build. The locale metadata in `locale/*.json` supplies the Plugin Manager title, description, and icon.
 
 Files:
 
 - `index.js` — Host route, cache, account calls, origin checks.
-- `client.js` — composer pill, polling, formatting, tooltip, locale dictionaries.
+- `src/client.js` — sidebar footer badge source: query definition, formatting, tooltip, locale dictionaries.
+- `scripts/build-client.mjs` — esbuild bundle wrapped in the `__ModuleLoader__` factory.
+- `client.js` — generated browser bundle; do not edit.
 - `cordis.patch.yml` — inserts the `deepseek-balance-indicator` row.
 - `locale/en.json`, `locale/zh.json` — Plugin Manager metadata.
 - `icon.svg` — original wallet icon.
@@ -106,9 +120,10 @@ The balance is read through the existing Harness account session. This plugin ad
 
 - The account session is required; API-key-only sessions show `Sign in`.
 - Only the Platform wallet summary is shown. Per-model spend and request history live on the usage page.
-- With multiple currencies, the pill shows the currency matching the UI language (`CNY` for Chinese, `USD` otherwise) and lists the rest in the tooltip.
+- With multiple currencies, the badge shows the currency matching the UI language (`CNY` for Chinese, `USD` otherwise) and lists the rest in the tooltip.
 - Refresh is intentionally slow to be gentle on the Platform API; use the click-through for an exact current view.
-- The pill appears in the composer dock for an active session, alongside the same stats row the built-in pills use.
+- The badge lives in the sidebar footer and is hidden while the sidebar is collapsed to the rail; it needs an expanded sidebar, not an active session.
+- The footer is one row shared with the Plugins launcher, so the launcher's right-aligned run count can be clipped by the badge's width in a narrow sidebar.
 
 ## License
 
