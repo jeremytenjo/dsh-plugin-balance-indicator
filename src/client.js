@@ -4,8 +4,8 @@
  * Registers one action in the left sidebar footer beside the account row. The
  * balance is a TanStack Query cache entry: it reads the loopback balance
  * route, polls on a slow interval, refreshes on focus and reconnect, and
- * exposes retry through the same query. Selecting the amount opens the
- * Platform usage page.
+ * exposes a manual refresh button beside the amount. Selecting the amount
+ * opens the Platform usage page.
  *
  * The sidebar footer is one row shared with the shipped Plugins launcher, so
  * the action is a compact pill and renders only while the sidebar is wide.
@@ -43,6 +43,8 @@ const EN = {
   updated: 'Updated {time}',
   openUsage: 'Select to open platform.deepseek.com/usage.',
   readyAria: 'DeepSeek balance {amount}. Select to open usage in a new tab.',
+  refresh: 'Refresh balance',
+  refreshing: 'Refreshing balance…',
 };
 
 const ZH = {
@@ -61,6 +63,8 @@ const ZH = {
   updated: '更新于 {time}',
   openUsage: '点击打开 platform.deepseek.com/usage。',
   readyAria: 'DeepSeek 余额 {amount}。点击在新标签页中打开用量页面。',
+  refresh: '刷新余额',
+  refreshing: '正在刷新余额…',
 };
 
 const STYLES = `
@@ -69,6 +73,7 @@ const STYLES = `
   display: flex;
   flex: none;
   align-items: center;
+  gap: 2px;
   min-width: 0;
   max-width: 100%;
   height: 42px;
@@ -119,6 +124,47 @@ button.dsh-balance-pill:focus-visible {
   overflow: hidden;
   text-overflow: ellipsis;
   font-variant-numeric: tabular-nums;
+}
+.dsh-balance-refresh {
+  box-sizing: border-box;
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--dsw-alias-label-tertiary);
+  cursor: pointer;
+}
+.dsh-balance-refresh:hover {
+  background: var(--dsw-alias-interactive-bg-hover);
+  color: var(--dsw-alias-label-primary);
+}
+.dsh-balance-refresh:focus-visible {
+  outline: var(--dsw-focus-ring-width, 2px) solid var(--dsw-focus-ring-color, var(--dsw-alias-state-business-primary));
+  outline-offset: 1px;
+}
+.dsh-balance-refresh svg {
+  flex: none;
+  width: 16px;
+  height: 16px;
+}
+.dsh-balance-refresh[data-spinning='true'] svg {
+  animation: dsh-balance-spin 900ms linear infinite;
+}
+@keyframes dsh-balance-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .dsh-balance-refresh[data-spinning='true'] svg {
+    animation: none;
+  }
 }
 `;
 
@@ -299,6 +345,23 @@ function WalletIcon() {
   );
 }
 
+function RefreshIcon() {
+  return h(
+    'svg',
+    {
+      viewBox: '0 0 16 16',
+      fill: 'none',
+      stroke: 'currentColor',
+      strokeWidth: 1.25,
+      strokeLinecap: 'round',
+      strokeLinejoin: 'round',
+      'aria-hidden': true,
+    },
+    h('path', { d: 'M14 8a6 6 0 1 1-6-6c1.68 0 3.29.67 4.49 1.83L14 5.33' }),
+    h('path', { d: 'M14 2v3.33h-3.33' }),
+  );
+}
+
 function BalanceIndicator(props) {
   const { t, clientCtx } = props;
   const lang = activeLocale(clientCtx);
@@ -333,13 +396,23 @@ function BalanceIndicator(props) {
     query.refetch();
   };
 
+  const refreshBusy = query.isFetching;
+  const refreshLabel = refreshBusy ? t('refreshing') : t('refresh');
+  const onRefresh = () => {
+    // Always flag the next query run as forced. If a poll is already in
+    // flight, refetch() cancels it and starts a fresh read, so a manual click
+    // is never dropped and never returns the Host's cached amount.
+    forceRef.current = true;
+    query.refetch();
+  };
+
   const pillProps = {
     className: 'dsh-balance-pill',
     'data-phase': phase,
     title: tooltip(t, state, lang),
     'aria-label': ariaLabel,
   };
-  if (query.isFetching) pillProps['aria-busy'] = 'true';
+  if (refreshBusy) pillProps['aria-busy'] = 'true';
   if (interactive) {
     pillProps.type = 'button';
     pillProps.onClick = onClick;
@@ -349,6 +422,19 @@ function BalanceIndicator(props) {
     'span',
     { className: 'dsh-balance-seat' },
     h(interactive ? 'button' : 'span', pillProps, h(WalletIcon), h('span', { className: 'dsh-balance-amount' }, text)),
+    h(
+      'button',
+      {
+        type: 'button',
+        className: 'dsh-balance-refresh',
+        'data-spinning': refreshBusy ? 'true' : undefined,
+        'aria-busy': refreshBusy ? 'true' : undefined,
+        'aria-label': refreshLabel,
+        title: refreshLabel,
+        onClick: onRefresh,
+      },
+      h(RefreshIcon),
+    ),
   );
 }
 

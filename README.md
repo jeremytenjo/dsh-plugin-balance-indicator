@@ -2,13 +2,14 @@
 
 Shows how much DeepSeek Platform balance you have left, in the left sidebar footer just above the account row.
 
-The badge reads `¥12.34` / `$12.34` from your signed-in DeepSeek account, refreshes every 60 seconds and when the window regains focus, and opens [platform.deepseek.com/usage](https://platform.deepseek.com/usage) when clicked. Bonus credit, per-currency breakdown, and the last refresh time appear on hover.
+The badge reads `¥12.34` / `$12.34` from your signed-in DeepSeek account, refreshes every 60 seconds and when the window regains focus, and opens [platform.deepseek.com/usage](https://platform.deepseek.com/usage) when clicked. The refresh button beside the amount forces an immediate read. Bonus credit, per-currency breakdown, and the last refresh time appear on hover.
 
 ## Features
 
 - **Remaining balance at a glance** at the bottom of the left sidebar, beside the account and Plugins controls.
 - **Bonus credit separate from paid balance**, listed in the tooltip instead of being silently added.
 - **Live enough**: one [TanStack Query](https://tanstack.com/query) cache entry refreshes on mount, every 60 seconds, and when the window regains focus or the network reconnects; the Host coalesces requests with a 20-second cache.
+- **Manual refresh**: the refresh button beside the amount bypasses the Host cache, spins while the read runs, and never opens the usage page by mistake.
 - **Click through to usage**: opens the Platform usage page from the account's own `usageUrl`.
 - **Honest states**: `Sign in` when no DeepSeek account is connected, `Unavailable` when the query fails (click to retry), and no fake zero balance.
 - **English and Chinese** UI, following the Harness language setting.
@@ -33,7 +34,7 @@ Manual installation is also possible: add the package directory to the profile's
 
 ## Usage
 
-| State | Footer badge | Click |
+| State | Footer badge | Badge click |
 | --- | --- | --- |
 | Signed in, balance loaded | `¥12.34` | Opens the Platform usage page |
 | Balance with bonus credit | `¥12.34` (hover for bonus lines) | Opens the Platform usage page |
@@ -41,9 +42,11 @@ Manual installation is also possible: add the package directory to the profile's
 | Query failed | `Unavailable` | Retries |
 | First load | `Balance…` | — |
 
-Hovering shows every wallet currency, bonus wallets with a positive balance, the last successful refresh time, and the click hint.
+The refresh button sits directly beside the amount and works in every state. It asks the Host for a forced read (`refresh=1`, bypassing the 20-second cache), spins while that read runs, and changes its label from “Refresh balance” to “Refreshing balance…” for screen readers. If a poll is already in flight, a refresh click cancels it and restarts with the forced read, so the button never returns a stale cached amount.
 
-The badge uses the sidebar footer's own 42px action row, radius, and theme tokens, so it inherits light and dark themes without configuration. The sidebar footer is a single row shared with the shipped Plugins launcher: the balance takes only its content width and sits first, and it stays hidden while the sidebar is collapsed to the 56px rail (the cached balance reappears immediately on expand).
+Hovering the badge shows every wallet currency, bonus wallets with a positive balance, the last successful refresh time, and the click hint.
+
+The badge uses the sidebar footer's own 42px action row, radius, and theme tokens, so it inherits light and dark themes without configuration. The sidebar footer is a single row shared with the shipped Plugins launcher: the balance and its refresh button take only their content width and sit first, and they stay hidden while the sidebar is collapsed to the 56px rail (the cached balance reappears immediately on expand).
 
 ## How it works
 
@@ -82,6 +85,7 @@ The badge's state lives in one TanStack Query entry keyed by language and timezo
 - `staleTime: 20s` matches the Host cache, so a focus refetch only asks again once that cache could have moved.
 - `refetchInterval: 60s` polls while the window is visible; `refetchOnWindowFocus` and `refetchOnReconnect` cover the gaps.
 - A click on the failure state calls `refetch()` with the route's `refresh=1` flag; the query's own retry loop is disabled so a failure is reported immediately instead of after backoff.
+- The refresh button sets the same force flag and calls `refetch()`. It is not disabled while fetching, so keyboard focus is never dropped; instead the icon spins, the accessible label changes, and the 60-second interval restarts after the read.
 - A response whose Host query failed (`status: "failed"`) is cached as data, not as an error, so the failed state appears immediately and the 60-second poll recovers on its own. A network error after a successful load keeps the last known amount visible instead of replacing it.
 - The `QueryClient` is created per enabled plugin instance, provided to the badge's subtree, and cleared in the effect cleanup when the plugin is disabled. The cached entry survives collapsing the sidebar, so expanding again shows the last amount while any stale fetch runs.
 
@@ -105,7 +109,7 @@ node --check client.js
 Files:
 
 - `index.js` — Host route, cache, account calls, origin checks.
-- `src/client.js` — sidebar footer badge source: query definition, formatting, tooltip, locale dictionaries.
+- `src/client.js` — sidebar footer badge source: query definition, formatting, refresh control, tooltip, locale dictionaries.
 - `scripts/build-client.mjs` — esbuild bundle wrapped in the `__ModuleLoader__` factory.
 - `client.js` — generated browser bundle; do not edit.
 - `cordis.patch.yml` — inserts the `deepseek-balance-indicator` row.
@@ -121,7 +125,7 @@ The balance is read through the existing Harness account session. This plugin ad
 - The account session is required; API-key-only sessions show `Sign in`.
 - Only the Platform wallet summary is shown. Per-model spend and request history live on the usage page.
 - With multiple currencies, the badge shows the currency matching the UI language (`CNY` for Chinese, `USD` otherwise) and lists the rest in the tooltip.
-- Refresh is intentionally slow to be gentle on the Platform API; use the click-through for an exact current view.
+- Background polling is intentionally slow to be gentle on the Platform API; use the refresh button (or the usage page) for an exact current read.
 - The badge lives in the sidebar footer and is hidden while the sidebar is collapsed to the rail; it needs an expanded sidebar, not an active session.
 - The footer is one row shared with the Plugins launcher, so the launcher's right-aligned run count can be clipped by the badge's width in a narrow sidebar.
 
